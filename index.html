@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#8A6A52">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>Cerebral Chiropractic Center — Role Dashboard</title>
+<style>
+  :root{
+    --bg:#17130F; --panel:#231D17; --panel2:#2F2720; --line:#3F352C; --line2:#54473B;
+    --text:#EDEAE9; --text2:#CEC6C0; --muted:#A29386; --faint:#806F60; --done:#70655C;
+    --gold:#C7A795; --gold-deep:#9A7E6C; --gold-ink:#1C1512;
+    --rose:#D9576F; --rose-soft:rgba(217,87,111,.15); --rose-line:rgba(217,87,111,.45); --rose-strong:#E0697E;
+    --blue:#7FB0AC; --blue-soft:rgba(127,176,172,.16); --blue-line:rgba(127,176,172,.32);
+    --od-bg:rgba(217,87,111,.10); --od-line:rgba(217,87,111,.55);
+    --radius:12px; --radius-sm:8px;
+  }
+  body.light{
+    --bg:#F4F0EB; --panel:#FFFFFF; --panel2:#F0E9E1; --line:#E1D6CB; --line2:#D2C3B6;
+    --text:#2A211C; --text2:#5A4C42; --muted:#897A6E; --faint:#A9988B; --done:#B7A99D;
+    --gold:#8A6A52; --gold-deep:#6E5340; --gold-ink:#FFFFFF;
+    --rose:#B02A47; --rose-soft:rgba(176,42,71,.10); --rose-line:rgba(176,42,71,.40); --rose-strong:#9C1F3A;
+    --blue:#3F6E6E; --blue-soft:rgba(63,110,110,.10); --blue-line:rgba(63,110,110,.32);
+    --od-bg:rgba(176,42,71,.07); --od-line:rgba(176,42,71,.5);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s,color .2s;}
+  .shell{max-width:880px;margin:0 auto;padding:18px 18px 60px;}
+  .header{position:relative;display:flex;align-items:center;justify-content:center;padding:14px 0 22px;border-bottom:1px solid var(--line);margin-bottom:18px;}
+  .header img{height:118px;width:auto;max-width:100%;display:block;}
+  .themebtn{position:absolute;right:0;top:50%;transform:translateY(-60%);width:42px;height:42px;border-radius:50%;border:1px solid var(--line2);background:var(--panel);color:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+  .themebtn:hover{border-color:var(--gold);transform:translateY(-60%) translateY(-1px);}
+  .title{font-size:13px;font-weight:600;color:var(--gold);letter-spacing:.06em;text-transform:uppercase;margin:0 0 14px;}
+  .controlrow{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:20px;align-items:start;}
+  @media(max-width:680px){.controlrow{grid-template-columns:1fr;}}
+  .rolecol .collabel,.calcol .collabel{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;}
+  .roletabs{display:flex;flex-direction:column;gap:8px;}
+  .roletab{padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--line2);background:var(--panel);cursor:pointer;font-size:14px;color:var(--text2);transition:all .12s;display:flex;align-items:center;justify-content:space-between;text-align:left;gap:8px;}
+  .roletab:hover{border-color:var(--gold);color:var(--text);}
+  .roletab.active{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:600;}
+  .roletab .badges{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .roletab .c{opacity:.7;font-size:11px;}
+  .roletab .odc{font-size:10px;font-weight:700;background:var(--rose);color:#fff;border-radius:999px;padding:1px 7px;}
+  .roletab.active .odc{background:var(--gold-ink);color:var(--gold);}
+  .calwrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 11px;}
+  .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+  .calhead .mname{font-size:12px;font-weight:600;color:var(--text);}
+  .calnav{display:flex;gap:4px;}
+  .calnav button,.todaybtn{border:1px solid var(--line2);background:var(--panel2);color:var(--text2);border-radius:5px;cursor:pointer;font-size:11px;padding:2px 6px;line-height:1.3;}
+  .calnav button:hover,.todaybtn:hover{border-color:var(--gold);color:var(--text);}
+  .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+  .caldow{text-align:center;font-size:8px;color:var(--muted);text-transform:uppercase;padding:1px 0;}
+  .calcell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:4px;border:1px solid transparent;cursor:pointer;font-size:10px;color:var(--text2);transition:all .1s;position:relative;}
+  .calcell:hover{background:var(--panel2);}
+  .calcell.empty{cursor:default;}
+  .calcell.weekend{color:var(--faint);}
+  .calcell.today{border-color:var(--gold-deep);}
+  .calcell.selected{background:var(--gold);color:var(--gold-ink);font-weight:700;}
+  .calcell .dots{display:flex;gap:1px;height:3px;margin-top:1px;}
+  .calcell .dot{width:3px;height:3px;border-radius:50%;}
+  .calcell .dot.m{background:var(--rose);}
+  .calcell .dot.w{background:var(--blue);}
+  .calcell.selected .dot.m,.calcell.selected .dot.w{outline:.5px solid var(--gold-ink);}
+  .seldate{font-size:10px;color:var(--muted);margin:8px 0 0;text-align:center;line-height:1.4;}
+  .seldate b{color:var(--gold);font-weight:600;}
+  .meta{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px;}
+  .metric{flex:1;min-width:130px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;}
+  .metric.od{border-color:var(--od-line);}
+  .metric .lbl{font-size:12px;color:var(--muted);margin:0 0 5px;}
+  .metric .val{font-size:24px;font-weight:600;margin:0;color:var(--text);}
+  .metric .val small{font-size:13px;color:var(--muted);font-weight:400;}
+  .bar{height:7px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:9px;}
+  .bar>span{display:block;height:100%;background:var(--gold);border-radius:999px;transition:width .25s;}
+  .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
+  .btn{font-size:12px;padding:7px 13px;border-radius:var(--radius-sm);border:1px solid var(--line2);background:var(--panel);color:var(--text2);cursor:pointer;}
+  .btn:hover{border-color:var(--gold);color:var(--text);}
+  .hint{font-size:11px;color:var(--faint);}
+  .freqlabel{margin:16px 0 6px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;display:flex;align-items:center;gap:7px;}
+  .freqlabel.overdue{color:var(--rose-strong);}
+  .freqlabel.monthly{color:var(--rose);}
+  .freqlabel.weekly{color:var(--rose);}
+  .freqlabel.daily{color:var(--gold-deep);}
+  .freqlabel .pill{font-size:9px;padding:2px 7px;border-radius:999px;background:var(--rose-soft);color:var(--rose);border:1px solid var(--rose-line);}
+  .freqlabel.overdue .pill{background:var(--rose);color:#fff;border-color:var(--rose);}
+  .section{margin-bottom:14px;}
+  .sechead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 7px;}
+  .sechead h3{font-size:14px;font-weight:600;margin:0;color:var(--text2);}
+  .sechead .cnt{font-size:11px;color:var(--muted);}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;}
+  .card.keystone{border-color:var(--rose-line);}
+  .card.overdue{border-color:var(--od-line);background:var(--od-bg);}
+  .item{display:flex;align-items:flex-start;gap:11px;padding:11px 14px;border-top:1px solid var(--line);cursor:pointer;font-size:14px;line-height:1.45;color:var(--text2);}
+  .item:first-child{border-top:none;}
+  .item:hover{background:var(--panel2);}
+  .box{flex-shrink:0;width:19px;height:19px;border-radius:5px;border:1.5px solid var(--line2);display:flex;align-items:center;justify-content:center;margin-top:1px;color:var(--gold-ink);font-size:13px;font-weight:700;background:transparent;}
+  .item.done .box{background:var(--gold);border-color:var(--gold);}
+  .item.keystone .box{border-color:var(--rose-line);color:#fff;}
+  .item.keystone.done .box{background:var(--rose);border-color:var(--rose);}
+  .item.overdue .box{border-color:var(--rose-strong);color:#fff;}
+  .item.overdue.done .box{background:var(--rose-strong);border-color:var(--rose-strong);}
+  .item.done .txt{color:var(--done);text-decoration:line-through;}
+  .item.keystone .txt,.item.overdue .txt{color:var(--text);}
+  .item.keystone.done .txt,.item.overdue.done .txt{color:var(--done);}
+  .item .txt .due{display:block;font-size:11px;font-weight:600;color:var(--rose-strong);margin-top:2px;}
+  .item .txt .origin{font-size:11px;color:var(--muted);font-weight:400;}
+  .nothing{background:var(--panel);border:1px dashed var(--line2);border-radius:var(--radius-sm);padding:14px;font-size:13px;color:var(--muted);text-align:center;margin-bottom:14px;}
+  .foot{font-size:11px;color:var(--done);margin-top:18px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px;}
+  /* manager oversight */
+  .mgrwrap{margin-bottom:8px;}
+  .mgrhint{font-size:11px;color:var(--muted);margin:0 0 14px;}
+  .rolecard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:12px;}
+  .rolecard.flag{border-color:var(--od-line);}
+  .rc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+  .rc-who{display:flex;align-items:center;gap:11px;}
+  .rc-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:var(--panel2);color:var(--gold);border:1px solid var(--line2);}
+  .rolecard.flag .rc-av{background:var(--rose-soft);color:var(--rose-strong);border-color:var(--rose-line);}
+  .rc-nm{font-size:15px;font-weight:600;margin:0;color:var(--text);}
+  .rc-sub{font-size:11px;color:var(--muted);margin:1px 0 0;}
+  .rc-view{font-size:12px;padding:6px 13px;border-radius:var(--radius-sm);border:1px solid var(--line2);background:var(--panel2);color:var(--text2);cursor:pointer;font-family:inherit;flex-shrink:0;}
+  .rc-view:hover{border-color:var(--gold);color:var(--text);}
+  .barrow{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+  .barrow .blab{font-size:12px;color:var(--muted);width:74px;flex-shrink:0;}
+  .barrow .btrack{flex:1;height:9px;border-radius:999px;background:var(--line);overflow:hidden;}
+  .barrow .btrack>span{display:block;height:100%;border-radius:999px;}
+  .barrow .bval{font-size:12px;width:78px;text-align:right;flex-shrink:0;color:var(--text2);}
+  .barrow .bval .od{color:var(--rose-strong);font-weight:600;}
+  .openlist{margin-top:11px;padding-top:11px;border-top:1px solid var(--line);display:none;}
+  .openlist.show{display:block;}
+  .openlist .olh{font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin:0 0 6px;}
+  .openlist .olh.k{color:var(--rose);}
+  .openlist .olh.d{color:var(--gold-deep);}
+  .openlist .oli{font-size:13px;color:var(--text2);padding:4px 0 4px 16px;position:relative;}
+  .openlist .oli::before{content:"";position:absolute;left:2px;top:11px;width:5px;height:5px;border-radius:50%;background:var(--muted);}
+  .openlist .oli.kk::before{background:var(--rose);}
+  .openlist .oli .od{color:var(--rose-strong);font-size:11px;}
+  .openlist .allclear{font-size:13px;color:var(--blue);}
+  .openlist .grp{margin-bottom:10px;}
+  /* history */
+  .histbar{display:flex;justify-content:flex-end;margin-bottom:10px;}
+  .histpanel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:18px;display:none;}
+  .histpanel.open{display:block;}
+  .histpanel h4{margin:0 0 10px;font-size:13px;color:var(--gold);font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+  .histrow{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px;}
+  .histrow:first-of-type{border-top:none;}
+  .histrow .hd{color:var(--text2);}
+  .histrow .hv{color:var(--muted);font-size:12px;text-align:right;}
+  .histrow .hv .ok{color:var(--blue);}
+  .histrow .hv .miss{color:var(--rose-strong);}
+  .histempty{font-size:12px;color:var(--muted);}
+  /* mode toggle + stats entry */
+  .moderow{display:flex;gap:8px;margin:0 0 16px;}
+  .modebtn{flex:0 0 auto;padding:9px 22px;border-radius:var(--radius-sm);border:1px solid var(--line2);background:var(--panel);color:var(--text2);cursor:pointer;font-size:13px;font-family:inherit;font-weight:600;}
+  .modebtn:hover{border-color:var(--gold);color:var(--text);}
+  .modebtn.on{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);}
+  .statspanel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:16px 18px;margin-bottom:18px;}
+  .statshead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px;}
+  .statstitle{font-size:15px;font-weight:600;margin:0;color:var(--text);}
+  .statsdate{font-size:11px;color:var(--muted);margin:3px 0 0;}
+  .statwho{background:var(--panel2);border:1px solid var(--line2);color:var(--text);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;width:140px;flex-shrink:0;}
+  .gatehint{font-size:11.5px;color:var(--gold-deep);background:var(--rose-soft);border:1px solid var(--rose-line);border-radius:6px;padding:8px 11px;margin:8px 0 6px;line-height:1.45;}
+  .gatehint.ok{color:var(--blue);background:var(--blue-soft);border-color:var(--blue-line);}
+  .statgrp{margin-top:12px;}
+  .statgrplbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:2px;}
+  .statrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 2px;border-top:1px solid var(--line);}
+  .statrow:first-of-type{border-top:none;}
+  .statlbl{font-size:13.5px;color:var(--text2);}
+  .statrow.total .statlbl{font-weight:600;color:var(--text);}
+  .statin{position:relative;}
+  .statin input{width:120px;text-align:right;background:var(--panel2);border:1px solid var(--line2);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13.5px;color:var(--text);}
+  .statin input:focus{outline:none;border-color:var(--gold);}
+  .statin.cur input{padding-left:18px;}
+  .statin.cur::before{content:"$";position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;}
+  .statrow.total .statin input{background:var(--bg);border-style:dashed;color:var(--gold-deep);font-weight:600;}
+  .statsbar{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap;}
+  .btn.save{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:600;}
+  .btn.save:hover{background:var(--gold-deep);}
+  .statstatus{font-size:12px;color:var(--muted);}
+  .statstatus.ok{color:var(--blue);} .statstatus.err{color:var(--rose-strong);}
+  .item.statsgate{cursor:pointer;}
+  .item.statsgate .box{border-style:dashed;}
+  .autopill{flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:999px;background:var(--panel2);color:var(--muted);border:1px solid var(--line2);align-self:flex-start;margin-top:1px;}
+  /* auth + pin + util + responsive */
+  .screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .authcard{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px;}
+  .authcard img{height:62px;width:auto;max-width:80%;display:block;margin:0 auto 8px;}
+  .authcard .sub{font-size:12px;color:var(--muted);text-align:center;margin:0 0 16px;letter-spacing:.04em;text-transform:uppercase;}
+  .fieldlbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:12px 0 5px;display:block;}
+  .authcard input{width:100%;background:var(--panel2);border:1px solid var(--line2);color:var(--text);border-radius:8px;padding:11px 12px;font-family:inherit;font-size:15px;}
+  .authcard input:focus{outline:none;border-color:var(--gold);}
+  .pinval{text-align:center;letter-spacing:.45em;font-size:22px;}
+  .bigbtn{width:100%;margin-top:18px;background:var(--gold);color:var(--gold-ink);border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .bigbtn:hover{background:var(--gold-deep);}
+  .bigbtn:disabled{opacity:.6;cursor:default;}
+  .formerr{font-size:12.5px;color:var(--rose-strong);margin-top:12px;min-height:16px;text-align:center;}
+  .utilbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;flex-wrap:wrap;}
+  .whoami{font-size:12px;color:var(--muted);}
+  .utilbtns{display:flex;gap:6px;flex-wrap:wrap;}
+  .ubtn{font-size:11.5px;padding:6px 11px;border-radius:7px;border:1px solid var(--line2);background:var(--panel);color:var(--text2);cursor:pointer;font-family:inherit;}
+  .ubtn:hover{border-color:var(--gold);color:var(--text);}
+  @media(max-width:560px){
+    .shell{padding:12px 12px 48px;}
+    .header{padding:8px 0 16px;margin-bottom:14px;}
+    .header img{height:84px;}
+    .themebtn{width:36px;height:36px;}
+    .controlrow{grid-template-columns:1fr;gap:14px;}
+    .metric{min-width:calc(50% - 5px);padding:10px 12px;}
+    .metric .val{font-size:20px;}
+    .statin input{width:100px;}
+    .statwho{width:118px;}
+    .roletab{padding:11px 12px;font-size:13.5px;}
+  }
+  @media(max-width:380px){ .metric{min-width:100%;} }
+</style>
+</head>
+<body>
+<div id="authScreen" class="screen" hidden>
+  <div class="authcard">
+    <img src="logo.png" alt="Cerebral Chiropractic Center">
+    <p class="sub">Staff sign in</p>
+    <label class="fieldlbl" for="authEmail">Email</label>
+    <input id="authEmail" type="email" autocomplete="username" inputmode="email" placeholder="you@cerebralchiropractic.com">
+    <label class="fieldlbl" for="authPass">Password</label>
+    <input id="authPass" type="password" autocomplete="current-password" placeholder="Password">
+    <button id="authBtn" class="bigbtn">Sign in</button>
+    <div id="authErr" class="formerr"></div>
+  </div>
+</div>
+<div class="shell" id="appShell" hidden>
+  <div class="utilbar"><span id="whoami" class="whoami"></span><span class="utilbtns"><button id="installBtn" class="ubtn" hidden>Install app</button><button id="signOut" class="ubtn">Sign out</button></span></div>
+  <div class="header">
+    <img src="logo.png" alt="Cerebral Chiropractic Center of Tampa Bay">
+    <button class="themebtn" id="themeBtn" title="Toggle light / dark" aria-label="Toggle light or dark mode"></button>
+  </div>
+  <p class="title">Role &amp; Responsibility Dashboard</p>
+  <div class="controlrow">
+    <div class="rolecol">
+      <p class="collabel">1 &middot; Select your role</p>
+      <div class="roletabs" id="roletabs"></div>
+    </div>
+    <div class="calcol">
+      <p class="collabel">2 &middot; Select the day</p>
+      <div class="calwrap">
+        <div class="calhead">
+          <div class="mname" id="calMonth"></div>
+          <div class="calnav">
+            <button id="prevM" aria-label="Previous month">&#8249;</button>
+            <button class="todaybtn" id="todayBtn">Today</button>
+            <button id="nextM" aria-label="Next month">&#8250;</button>
+          </div>
+        </div>
+        <div class="calgrid" id="calGrid"></div>
+        <p class="seldate" id="selDate"></p>
+      </div>
+    </div>
+  </div>
+  <div id="modeRow" class="moderow"></div>
+  <div class="meta" id="metaRow"></div>
+  <div class="actions">
+    <button class="btn" id="resetBtn">Reset this day's items</button>
+    <button class="btn" id="histBtn">History</button>
+    <span class="hint">Tap a row to mark complete &middot; saves &amp; accumulates over time on this computer</span>
+  </div>
+  <div class="histpanel" id="histPanel"></div>
+  <div id="sections"></div>
+  <div id="statsPanel" class="statspanel" style="display:none"></div>
+  <div class="mgrwrap" id="mgrPanel" style="display:none"></div>
+  <p class="foot" id="foot"></p>
+</div>
+<script>
+(function(){
+  const CONFIG={
+    SUPABASE_URL:"https://uhrbrobkbygkqzvtvlkf.supabase.co",
+    SUPABASE_KEY:"sb_publishable_DSRnUdnvm3sqr24rnQOARA_0XHWHAmT"
+  };
+  const supa=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+  window.supa=supa;
+  const $=function(id){return document.getElementById(id);};
+  function showScreen(el){["authScreen","appShell"].forEach(function(x){var n=$(x);if(n)n.hidden=(x!==el);});}
+  var dashStarted=false, userEmail="";
+  async function enterApp(){
+    var w=$("whoami");if(w)w.textContent=userEmail||"";
+    showScreen("appShell");
+    if(!dashStarted){dashStarted=true;if(window.__startDashboard)await window.__startDashboard();}
+    else if(window.__refresh){window.__refresh();}
+  }
+  async function doLogin(){
+    var em=$("authEmail").value.trim(),pw=$("authPass").value,er=$("authErr");er.textContent="";
+    if(!em||!pw){er.textContent="Enter your email and password.";return;}
+    var b=$("authBtn");b.disabled=true;b.textContent="Signing in\u2026";
+    var res=await supa.auth.signInWithPassword({email:em,password:pw});
+    b.disabled=false;b.textContent="Sign in";
+    if(res.error){er.textContent=res.error.message||"Sign in failed.";return;}
+    userEmail=em;enterApp();
+  }
+  async function doSignOut(){try{await supa.auth.signOut();}catch(e){}dashStarted=false;location.reload();}
+  var deferredPrompt=null;
+  window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;var b=$("installBtn");if(b)b.hidden=false;});
+  (async function(){
+    var sess=await supa.auth.getSession();
+    if(sess&&sess.data&&sess.data.session){var u=sess.data.session.user;userEmail=(u&&u.email)||"";enterApp();}
+    else{showScreen("authScreen");}
+    $("authBtn").onclick=doLogin;
+    $("authEmail").addEventListener("keydown",function(e){if(e.key==="Enter")$("authPass").focus();});
+    $("authPass").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin();});
+    $("signOut").onclick=doSignOut;
+    var ib=$("installBtn");if(ib)ib.onclick=async function(){if(!deferredPrompt)return;deferredPrompt.prompt();try{await deferredPrompt.userChoice;}catch(e){}deferredPrompt=null;ib.hidden=true;};
+    if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(function(){});}
+  })();
+})();
+</script>
+<script>
+(function(){
+  const DATA = {"Front Desk": {"daily": {"Morning opening": ["Turn on office lights", "Turn on computer", "Turn on office music", "Check voicemail and return calls as needed", "Check office email and respond/forward as needed", "Check fax inbox and distribute documents", "Stock waiting area (water, cups, tea supplies)", "Check and restock restroom supplies"], "Throughout the day": ["Greet patients as they arrive", "Check patients in for appointments", "Notify doctor when patients arrive", "Escort patient to appropriate room", "Answer incoming phone calls", "Schedule and reschedule appointments", "Keep doctors on schedule", "Check patients out after appointments", "Collect payments and post to accounts", "Provide receipts upon request", "Schedule follow-up appointments", "Monitor schedule for no-shows", "Contact no-show patients and document", "Maintain a welcoming front desk area"], "After lunch": ["Check voicemail messages", "Return calls as needed", "Check office email", "Respond to emails if needed"], "End of day": ["Check voicemail messages", "Check office email", "Call new patients scheduled for next day", "Pull charts for next-day appointments", "Tidy front desk area", "Tidy waiting room", "Complete daily stats for the day", "Turn off lights", "Lock door", "Ensure office is ready for next business day"]}, "weekly": {"2": {"Tuesday": ["Check inventory and order needed supplies", "Empty trash cans"]}, "4": {"Thursday": ["Patient recalls for patients off care", "Empty trash cans"]}, "5": {"Friday": ["Complete and submit weekly statistics"]}}, "monthly": {}}, "Chiropractic Assistant": {"daily": {"Opening procedures": ["Turn on all office and clinical equipment", "Ensure paper supplies fully stocked", "Verify rooms clean, organized, prepared", "Check office messages, respond or route"], "Throughout the day": ["Greet patients and visitors warmly", "Check patients in and verify info", "Escort patients and prepare them for care", "Perform prescribed therapies as directed", "Monitor patient progress and gather feedback", "Communicate concerns/progress to doctor", "Maintain efficient patient flow", "Answer phones and assist patients", "Schedule, confirm, reschedule appointments", "Process payments, keep accurate records", "Check patients out and schedule visits", "Request reviews and testimonials", "Educate patients on referrals", "Monitor supply levels, notify management"], "Closing procedures": ["Shut down ChiroTouch on all computers", "Shut down equipment, turn off lights", "End-of-day financial reconciliation", "Sanitize and disinfect treatment tables", "Empty trash, tidy restrooms", "Clean and disinfect high-touch surfaces", "Prep clipboards/forms for next day"]}, "weekly": {"2": {"Tuesday": ["Scan documents into patient records", "Review, process, file pending paperwork"]}, "3": {"Wednesday": ["Monitor inventory and restock supplies", "Place supply orders incl. Amazon"]}, "4": {"Thursday": ["Scan, organize, and file patient documents"]}}, "monthly": {}}, "Office Manager": {"daily": {"Morning startup": ["Turn on X-ray computer, verify functioning", "Open and review all incoming emails", "Respond to urgent emails, flag follow-ups", "Return emails that require a response"], "Patient accounts & scheduling": ["Review patient schedule for the day", "Check balances for patients scheduled today", "Note outstanding balances to collect", "Verify insurance/payment issues"], "New patient follow-up": ["Check voicemail for new patient inquiries", "Return all new patient voicemails", "Review new patient inquiry emails", "Respond to and follow up new patient emails", "Schedule consultations/exams as needed"], "Lead & patient management": ["Upload new inquiries into BetaHook", "Verify contact info is complete/accurate", "Update patient management spreadsheet"], "Financial review": ["Check Stripe for new deposits/payments", "Record deposits as needed", "Verify payments reflected in accounts", "Note payment discrepancies for follow-up", "Make Regions Bank deposits (Thu/as needed)"], "End-of-day review": ["Confirm all emails addressed or assigned", "Confirm inquiries entered into BetaHook", "Verify patient mgmt spreadsheet current", "Confirm balances reviewed for the day", "Confirm transactions/deposits recorded"]}, "weekly": {}, "monthly": {"1": {"Balance statements & reporting": ["Run statements for balances over $500", "Review for accuracy & collection opportunities", "Send statements / initiate follow-up", "Document collection efforts & arrangements", "Compile monthly stats & metrics", "Submit required statistics to AMC", "Verify submission received and accepted", "Gather visit/production numbers per doctor", "Email doctor stats to Dr. Brubaker"]}, "8": {"Personal injury (PI) cases": ["Review all active PI cases", "Contact attorneys for status updates", "Contact insurers re: claims/payments", "Document updates in records/tracking", "Follow up on unpaid/delayed settlements"]}, "15": {"Accounts payable": ["Review monthly bills and invoices", "Pay all non-auto-debit bills", "Confirm payments processed", "File receipts and confirmations"]}, "22": {"Marketing, networking & review": ["Research upcoming networking events", "Register doctors for monthly events", "Register admin staff for applicable events", "Add events to calendars, send reminders", "Track attendance & opportunities", "Ensure all reports submitted", "Confirm networking registrations done", "Review goals & priorities for next month"]}}}};
+  const SKEY="ccc_dash_v5";
+  const staffRoles=Object.keys(DATA);
+  const roles=staffRoles.slice();
+  const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const DOWS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const MON=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const MONS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const KEYDAYS=[1,8,15,22];
+  let active=localStorage.getItem(SKEY+"_role")||roles[0];
+  if(!roles.includes(active)) active=roles[0];
+  let theme=localStorage.getItem(SKEY+"_theme")||"light";
+  let viewY, viewM;
+  let sel=new Date(); sel.setHours(0,0,0,0);
+  let histOpen=false;
+  let mode='checklist';
+
+  function ymd(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+  function parseYmd(s){const p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2]);}
+  function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+  function fmtShort(d){return DOWS[d.getDay()]+", "+MONS[d.getMonth()]+" "+d.getDate();}
+  function nthWeekday(year,month,weekday,n){if(n>0){let d=new Date(year,month,1);let add=(weekday-d.getDay()+7)%7;return new Date(year,month,1+add+(n-1)*7);}let d=new Date(year,month+1,0);let sub=(d.getDay()-weekday+7)%7;return new Date(year,month,d.getDate()-sub);}
+  function federalHolidays(year){const obs=d=>{const x=new Date(d);const w=x.getDay();if(w===0)x.setDate(x.getDate()+1);else if(w===6)x.setDate(x.getDate()-1);return x;};const list=[obs(new Date(year,0,1)),nthWeekday(year,0,1,3),nthWeekday(year,1,1,3),nthWeekday(year,4,1,-1),obs(new Date(year,5,19)),obs(new Date(year,6,4)),nthWeekday(year,8,1,1),nthWeekday(year,9,1,2),obs(new Date(year,10,11)),nthWeekday(year,10,4,4),obs(new Date(year,11,25))];return new Set(list.map(ymd));}
+  const holCache={};
+  function holsFor(y){if(!holCache[y])holCache[y]=federalHolidays(y);return holCache[y];}
+  function isClosed(d){const w=d.getDay();if(w===0||w===6)return true;return holsFor(d.getFullYear()).has(ymd(d));}
+  function rollBack(d){const x=new Date(d);let g=0;while(isClosed(x)&&g<14){x.setDate(x.getDate()-1);g++;}return x;}
+
+  /* monthly key-days resolving (after rollback) onto date d */
+  function monthlyKeysOnDate(d){const out=[];const y=d.getFullYear(),m=d.getMonth();[[y,m],[(m===11?y+1:y),(m===11?0:m+1)]].forEach(([yy,mm])=>{KEYDAYS.forEach(kd=>{const target=new Date(yy,mm,kd);if(target.getMonth()!==mm)return;const eff=rollBack(target);if(ymd(eff)===ymd(d))out.push({kd:String(kd),eff});});});return out;}
+
+  /* storage: done keyed by stable task identity + the date it was DONE */
+  const SUPA_TOOL='mcp__edb39f4a-db84-40be-a310-00ef8a63afb2__execute_sql';
+  const SUPA_PROJECT='uhrbrobkbygkqzvtvlkf';
+  function _tryArr(v,d){if(d>6)return null;if(Array.isArray(v))return v;if(v&&typeof v==='object'){if(Array.isArray(v.result))return v.result;const n=(v.result!==undefined)?v.result:(v.content&&v.content[0]?v.content[0].text:undefined);return _tryArr(n,d+1);}if(typeof v!=='string')return null;let s=v;const m=s.match(/<untrusted-data-[^>]+>([\s\S]*?)<\/untrusted-data-[^>]+>/);if(m)s=m[1];s=s.trim();const i=s.indexOf('['),j=s.lastIndexOf(']');const sl=(i>=0&&j>i)?s.slice(i,j+1):s;const un=x=>x.replace(/\\"/g,'"').replace(/\\\\/g,'\\');for(const a of [s,sl,un(s),un(sl)]){try{const p=JSON.parse(a);const r=_tryArr(p,d+1);if(Array.isArray(r))return r;}catch(e){}}return null;}
+  function _rows(r){const c=[];const sc=r&&r.structuredContent;if(sc!==undefined)c.push(sc);if(sc&&sc.result!==undefined)c.push(sc.result);if(r&&r.content&&r.content[0]&&r.content[0].text!==undefined)c.push(r.content[0].text);c.push(r);for(const x of c){const a=_tryArr(x,0);if(Array.isArray(a))return a;}return [];}
+  async function sql(q){if(!window.cowork||!window.cowork.callMcpTool)throw new Error('Not in Cowork');const r=await window.cowork.callMcpTool(SUPA_TOOL,{project_id:SUPA_PROJECT,query:q});return _rows(r);}
+  function _esc(s){return String(s).replace(/'/g,"''");}
+  async function loadStore(){try{var res=await window.supa.from('app_state').select('data').eq('key','staff_store').maybeSingle();if(res.error)throw res.error;var d=res.data&&res.data.data;if(d){store.done=d.done||{};store.log=d.log||{};}}catch(e){}}
+  let _saveT=null;
+  function persist(){if(_saveT)clearTimeout(_saveT);_saveT=setTimeout(function(){window.supa.from('app_state').upsert({key:'staff_store',data:store,updated_at:new Date().toISOString()}).then(function(){},function(){});},150);}
+  function load(){return {done:{},log:{}};}
+  function save(){persist();}
+  let store=load(); if(!store.done)store.done={}; if(!store.log)store.log={};
+
+  /* ===== Stats integration ===== */
+  function escH(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  let STATCAT=null;
+  const STATVALS={};
+  const ROLE_STAT_GROUPS={'Front Desk':['appointment'],'Chiropractic Assistant':[],'Office Manager':['source','payer','financial','deposit','adjustment']};
+  const GRP_LABEL={appointment:'Appointment Types',source:'New Patient Sources',payer:'New Patient Types',financial:'Financials',deposit:'Deposits',adjustment:'Adjustments'};
+  const TOTALS={
+    src_total:function(m){return m.grp==='source'&&!m.is_total;},
+    pay_total:function(m){return m.grp==='payer'&&!m.is_total;},
+    fin_total_services:function(m){return m.grp==='financial'&&!m.is_total&&/_services$/.test(m.key);},
+    fin_total_collections:function(m){return m.grp==='financial'&&!m.is_total&&/_collections$/.test(m.key);},
+    dep_cash_check_total:function(m){return m.key==='dep_check'||m.key==='dep_cash';},
+    dep_cc_eft_total:function(m){return m.key==='dep_credit_card'||m.key==='dep_eft';},
+    dep_total:function(m){return m.grp==='deposit'&&!m.is_total;}
+  };
+  function roleHasStats(role){return !!ROLE_STAT_GROUPS[role];}
+  function roleStatMetrics(role){if(!STATCAT)return [];const gs=ROLE_STAT_GROUPS[role];if(!gs)return [];return STATCAT.filter(function(m){return gs.indexOf(m.grp)>=0;});}
+  function fdNonTotal(){return roleStatMetrics('Front Desk').filter(function(m){return !m.is_total;});}
+  function statFilled(v){return v!==undefined&&v!==null&&v!=='';}
+  function fdStatsCount(d){const ms=fdNonTotal();const vals=STATVALS[ymd(d)]||{};const n=ms.filter(function(m){return statFilled(vals[m.id]);}).length;return {n:n,total:ms.length};}
+  function fdStatsComplete(d){const ms=fdNonTotal();if(!ms.length)return false;const vals=STATVALS[ymd(d)]||{};return ms.every(function(m){return statFilled(vals[m.id]);});}
+  async function loadCatalog(){if(STATCAT)return;try{var res=await window.supa.from('stat_metrics').select('id,key,label,grp,unit,is_total,sort_order').order('sort_order');if(res.error)throw res.error;STATCAT=res.data||[];}catch(e){STATCAT=[];}}
+  async function loadStatsFor(ds){try{var res=await window.supa.from('stat_daily').select('metric_id,value').eq('stat_date',ds);if(res.error)throw res.error;var m={};(res.data||[]).forEach(function(r){m[r.metric_id]=r.value;});STATVALS[ds]=m;}catch(e){if(!STATVALS[ds])STATVALS[ds]={};}}
+  async function ensureStats(){const ds=ymd(sel);if(!STATVALS[ds])await loadStatsFor(ds);}
+  async function refresh(){await loadCatalog();await ensureStats();renderAll();}
+
+  /* stable task id independent of which day it shows on (so overdue carries) */
+  function taskId(role,freq,dueStr,sec,i){return role+"::"+freq+"::"+dueStr+"::"+sec+"::"+i;}
+  function isDone(id){return !!store.done[id];}
+  function setDone(id,onDate,meta){
+    if(store.done[id]){
+      const prev=store.done[id];
+      // remove from its log day
+      if(store.log[prev.on]&&store.log[prev.on].done) store.log[prev.on].done=store.log[prev.on].done.filter(x=>x.id!==id);
+      delete store.done[id];
+    } else {
+      store.done[id]={on:onDate,due:meta.due,label:meta.label,role:meta.role,freq:meta.freq};
+      if(!store.log[onDate])store.log[onDate]={done:[],missed:[]};
+      store.log[onDate].done.push({id,label:meta.label,due:meta.due,role:meta.role,freq:meta.freq});
+    }
+    save();
+  }
+
+  /* DUE instances for a role active "as of" date d:
+     - daily: just today's daily sections (not carried)
+     - weekly: assigned weekday in the current week (Mon-Sun) of d; overdue if assigned day < d
+     - monthly: each keyday effective date in current month of d; overdue if eff < d
+     Returns {overdue:[...], weekly:[...], monthly:[...], daily:[...]} groups
+  */
+  function weekStart(d){const x=new Date(d);const off=(x.getDay()+6)%7;x.setDate(x.getDate()-off);x.setHours(0,0,0,0);return x;} // Monday
+  function monthStart(d){return new Date(d.getFullYear(),d.getMonth(),1);}
+
+  function buildForDate(role,d){
+    const r=DATA[role];
+    const today=new Date(d); today.setHours(0,0,0,0);
+    const result={overdue:[],monthly:[],weekly:[],daily:[]};
+
+    /* WEEKLY: scan this week's days up to and including d */
+    const ws=weekStart(d);
+    for(let off=0; off<7; off++){
+      const day=addDays(ws,off);
+      if(day>today) break; // don't show future weekday tasks early
+      const wd=String(day.getDay());
+      if(r.weekly[wd]){
+        Object.keys(r.weekly[wd]).forEach(sec=>{
+          r.weekly[wd][sec].forEach((label,i)=>{
+            const dueStr=ymd(day);
+            const id=taskId(role,"weekly",dueStr,sec,i);
+            const done=isDone(id);
+            const overdue = !done && day<today;
+            const entry={id,label,sec,due:dueStr,dueDate:day,freq:"weekly",keystone:true,overdue,done};
+            if(done && ymd(day)!==ymd(today) ){ /* completed earlier-week task: skip from active view */ 
+              if(ymd(day)===ymd(today)) result.weekly.push(entry);
+            } else if(overdue){ result.overdue.push(entry); }
+            else if(ymd(day)===ymd(today)){ result.weekly.push(entry); }
+          });
+        });
+      }
+    }
+
+    /* MONTHLY: scan this month's keydays whose effective date <= d */
+    const y=d.getFullYear(), m=d.getMonth();
+    KEYDAYS.forEach(kd=>{
+      const target=new Date(y,m,kd);
+      if(target.getMonth()!==m) return;
+      const eff=rollBack(target);
+      if(eff>today) return; // not due yet
+      const blk=r.monthly[String(kd)];
+      if(!blk) return;
+      Object.keys(blk).forEach(sec=>{
+        blk[sec].forEach((label,i)=>{
+          const dueStr=ymd(eff);
+          const id=taskId(role,"monthly",dueStr,sec,i);
+          const done=isDone(id);
+          const overdue = !done && ymd(eff)!==ymd(today) && eff<today;
+          const entry={id,label,sec,due:dueStr,dueDate:eff,freq:"monthly",keystone:true,overdue,done};
+          if(overdue){ result.overdue.push(entry); }
+          else if(ymd(eff)===ymd(today)){ result.monthly.push(entry); }
+          else if(done && ymd(eff)===ymd(today)){ result.monthly.push(entry); }
+        });
+      });
+    });
+
+    /* DAILY: only on open days, only "today" (selected date) */
+    if(!isClosed(d)){
+      Object.keys(r.daily).forEach(sec=>{
+        r.daily[sec].forEach((label,i)=>{
+          const dueStr=ymd(today);
+          const id=taskId(role,"daily",dueStr,sec,i);
+          const gate=(role==='Front Desk' && /complete daily stats/i.test(label));
+          const e={id,label,sec,due:dueStr,dueDate:today,freq:"daily",keystone:false,overdue:false,done: gate?fdStatsComplete(today):isDone(id)};
+          if(gate){ e.statsGate=true; e.statsInfo=fdStatsCount(today); }
+          result.daily.push(e);
+        });
+      });
+    }
+    return result;
+  }
+
+  function flat(b){return [].concat(b.overdue,b.monthly,b.weekly,b.daily);}
+  function counts(role,d){const b=buildForDate(role,d);const all=flat(b);let done=all.filter(x=>x.done).length;return {total:all.length,done,overdue:b.overdue.length};}
+
+  /* Manager split: daily bucket vs keystone bucket (weekly+monthly+keystone overdue) */
+  function splitCounts(role,d){
+    const b=buildForDate(role,d);
+    const daily=b.daily.slice();
+    const keyOverdue=b.overdue.filter(x=>x.keystone);
+    const keystone=[].concat(b.monthly,b.weekly,keyOverdue);
+    const dDone=daily.filter(x=>x.done).length;
+    const kDone=keystone.filter(x=>x.done).length;
+    const kOverdue=keyOverdue.length;
+    return {
+      dailyOpen:daily.filter(x=>!x.done), dailyTotal:daily.length, dailyDone:dDone,
+      keyOpen:keystone.filter(x=>!x.done), keyTotal:keystone.length, keyDone:kDone, keyOverdue:kOverdue
+    };
+  }
+
+  function sun(){return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';}
+  function moon(){return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';}
+  function applyTheme(){document.body.classList.toggle("light",theme==="light");document.getElementById("themeBtn").innerHTML=theme==="light"?moon():sun();}
+
+  function renderRoles(){document.getElementById("roletabs").innerHTML=roles.map(r=>{
+    const c=counts(r,sel);const od=c.overdue?'<span class="odc">'+c.overdue+' overdue</span>':'';return '<button class="roletab'+(r===active?' active':'')+'" data-r="'+r+'"><span>'+r+'</span><span class="badges">'+od+'<span class="c">'+c.done+'/'+c.total+'</span></span></button>';}).join("");}
+
+  function renderCal(){document.getElementById("calMonth").textContent=MON[viewM]+" "+viewY;let html="";["S","M","T","W","T","F","S"].forEach(d=>html+='<div class="caldow">'+d+'</div>');const first=new Date(viewY,viewM,1).getDay();const days=new Date(viewY,viewM+1,0).getDate();for(let i=0;i<first;i++)html+='<div class="calcell empty"></div>';const todayStr=ymd(new Date(new Date().setHours(0,0,0,0)));for(let day=1;day<=days;day++){const d=new Date(viewY,viewM,day);const ds=ymd(d);const weekend=(d.getDay()===0||d.getDay()===6);const isSel=ds===ymd(sel);const isToday=ds===todayStr;const hasMonthly=staffRoles.some(r=>monthlyKeysOnDate(d).some(o=>DATA[r].monthly[o.kd]));const hasWeekly=staffRoles.some(r=>DATA[r].weekly[String(d.getDay())]);let dots="";if(hasMonthly)dots+='<span class="dot m"></span>';if(hasWeekly)dots+='<span class="dot w"></span>';html+='<div class="calcell'+(weekend?' weekend':'')+(isSel?' selected':'')+(isToday?' today':'')+'" data-d="'+ds+'">'+day+'<span class="dots">'+dots+'</span></div>';}document.getElementById("calGrid").innerHTML=html;const sc=isClosed(sel);document.getElementById("selDate").innerHTML="<b>"+DOW[sel.getDay()]+", "+MON[sel.getMonth()]+" "+sel.getDate()+"</b>"+(sc?" &middot; office closed":"");}
+
+  function renderMeta(){const b=buildForDate(active,sel);const all=flat(b);const total=all.length;const done=all.filter(x=>x.done).length;const pct=total?Math.round(done/total*100):0;document.getElementById("metaRow").innerHTML='<div class="metric"><p class="lbl">Day complete</p><p class="val">'+pct+'%</p><div class="bar"><span style="width:'+pct+'%"></span></div></div>'+'<div class="metric"><p class="lbl">Tasks done</p><p class="val">'+done+'<small> / '+total+'</small></p></div>'+'<div class="metric'+(b.overdue.length?' od':'')+'"><p class="lbl">Overdue</p><p class="val" style="color:'+(b.overdue.length?'var(--rose-strong)':'var(--text)')+'">'+b.overdue.length+'</p></div>';}
+
+  function groupBySec(items){const m={};items.forEach(it=>{(m[it.sec]=m[it.sec]||[]).push(it);});return m;}
+
+  function renderSections(){
+    const b=buildForDate(active,sel);
+    let html="";
+    /* OVERDUE first */
+    if(b.overdue.length){
+      html+='<div class="freqlabel overdue">Overdue <span class="pill">Carry forward until done</span></div>';
+      const secs=groupBySec(b.overdue);
+      Object.keys(secs).forEach(sec=>{
+        const items=secs[sec];let dn=items.filter(x=>x.done).length;
+        html+='<div class="section"><div class="sechead"><h3>'+sec+'</h3><span class="cnt">'+dn+'/'+items.length+'</span></div><div class="card overdue">';
+        items.forEach(it=>{const dc=it.done?' done':'';html+='<div class="item overdue'+dc+'" data-id="'+it.id+'"><span class="box">&#10003;</span><span class="txt">'+it.label+'<span class="due">Overdue &middot; was due '+fmtShort(it.dueDate)+'</span></span></div>';});
+        html+='</div></div>';
+      });
+    }
+    /* MONTHLY (due today) */
+    if(b.monthly.length){
+      html+='<div class="freqlabel monthly">Monthly keystone <span class="pill">Cannot be missed</span></div>';
+      const secs=groupBySec(b.monthly);
+      Object.keys(secs).forEach(sec=>{const items=secs[sec];let dn=items.filter(x=>x.done).length;html+='<div class="section"><div class="sechead"><h3>'+sec+'</h3><span class="cnt">'+dn+'/'+items.length+'</span></div><div class="card keystone">';items.forEach(it=>{const dc=it.done?' done':'';html+='<div class="item keystone'+dc+'" data-id="'+it.id+'"><span class="box">&#10003;</span><span class="txt">'+it.label+'</span></div>';});html+='</div></div>';});
+    }
+    /* WEEKLY (due today) — keystone */
+    if(b.weekly.length){
+      html+='<div class="freqlabel weekly">Weekly keystone <span class="pill">Cannot be missed</span></div>';
+      const secs=groupBySec(b.weekly);
+      Object.keys(secs).forEach(sec=>{const items=secs[sec];let dn=items.filter(x=>x.done).length;html+='<div class="section"><div class="sechead"><h3>'+sec+'</h3><span class="cnt">'+dn+'/'+items.length+'</span></div><div class="card keystone">';items.forEach(it=>{const dc=it.done?' done':'';html+='<div class="item keystone'+dc+'" data-id="'+it.id+'"><span class="box">&#10003;</span><span class="txt">'+it.label+'</span></div>';});html+='</div></div>';});
+    }
+    /* DAILY */
+    if(b.daily.length){
+      html+='<div class="freqlabel daily">Daily</div>';
+      const secs=groupBySec(b.daily);
+      Object.keys(secs).forEach(sec=>{const items=secs[sec];let dn=items.filter(x=>x.done).length;html+='<div class="section"><div class="sechead"><h3>'+sec+'</h3><span class="cnt">'+dn+'/'+items.length+'</span></div><div class="card">';items.forEach(it=>{const dc=it.done?' done':'';if(it.statsGate){const c=it.statsInfo||{n:0,total:0};const sub=it.done?('Auto-completed · all '+c.total+' daily stats entered'):('Auto · checks when stats are entered ('+c.n+'/'+c.total+') · tap to open Stats');html+='<div class="item statsgate'+dc+'" data-gotostats="1"><span class="box">&#10003;</span><span class="txt">'+it.label+'<span class="origin">'+sub+'</span></span><span class="autopill">auto</span></div>';}else{html+='<div class="item'+dc+'" data-id="'+it.id+'"><span class="box">&#10003;</span><span class="txt">'+it.label+'</span></div>';}});html+='</div></div>';});
+    }
+    const hasWM=b.overdue.length||b.monthly.length||b.weekly.length;
+    if(!hasWM && b.daily.length){html='<div class="nothing">No weekly, monthly, or overdue tasks today &mdash; just the daily list below.</div>'+html;}
+    if(isClosed(sel) && !hasWM && !b.daily.length){html='<div class="nothing">Office closed on this date. No tasks scheduled.</div>';}
+    document.getElementById("sections").innerHTML=html;
+    document.getElementById("foot").textContent="Auto-saves per day on this computer and accumulates over time. Weekly and monthly tasks keep their assigned due date; if not checked off, they carry forward as Overdue (red) until completed \u2014 weekly through end of that week, monthly through end of that month. Completing an overdue item records it on the day you clear it. Open History for the running record.";
+  }
+
+  function renderHistory(){
+    const panel=document.getElementById("histPanel");
+    panel.classList.toggle("open",histOpen);
+    if(!histOpen) return;
+    const days=Object.keys(store.log).sort().reverse();
+    let rows="";
+    let any=false;
+    days.forEach(ds=>{
+      const e=store.log[ds];
+      const done=(e.done||[]).filter(x=>x.role===active);
+      if(!done.length) return;
+      any=true;
+      const d=parseYmd(ds);
+      const parts=done.map(x=>{const late=x.due&&x.due!==ds;return '<div>'+(late?'<span class="ok">\u2713</span> ':'<span class="ok">\u2713</span> ')+x.label+(late?' <span class="miss">(was due '+fmtShort(parseYmd(x.due))+')</span>':'')+'</div>';}).join("");
+      rows+='<div class="histrow"><div class="hd">'+fmtShort(d)+'</div><div class="hv">'+parts+'</div></div>';
+    });
+    panel.innerHTML='<h4>Completion history &middot; '+active+'</h4>'+(any?rows:'<p class="histempty">No completed tasks recorded yet for this role. Check items off and they\u2019ll log here by the day you completed them.</p>');
+  }
+
+  function renderManager(){
+    const panel=document.getElementById("mgrPanel");
+    let html='<p class="mgrhint">Live status for each staff role on the selected day. Two bars per role: everyday tasks, and keystone tasks (weekly + monthly) that throw the office behind if missed. Tap View open to see exactly what is still unchecked.</p>';
+    staffRoles.forEach(role=>{
+      const sc=splitCounts(role,sel);
+      const dPct=sc.dailyTotal?Math.round(sc.dailyDone/sc.dailyTotal*100):0;
+      const kPct=sc.keyTotal?Math.round(sc.keyDone/sc.keyTotal*100):0;
+      const flagged=sc.keyOverdue>0;
+      const initials=role.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+      const dailyColor = dPct>=90?'var(--blue)':dPct>=60?'var(--gold)':'var(--rose-strong)';
+      const keyColor = flagged?'var(--rose-strong)':(kPct>=100?'var(--blue)':'var(--gold)');
+      const keyVal = sc.keyTotal? (flagged?'<span class="od">'+sc.keyOverdue+' overdue</span>':sc.keyDone+' / '+sc.keyTotal) : 'none today';
+      html+='<div class="rolecard'+(flagged?' flag':'')+'">'
+        +'<div class="rc-top"><div class="rc-who"><div class="rc-av">'+initials+'</div><div><p class="rc-nm">'+role+'</p><p class="rc-sub">'+(sc.dailyTotal-sc.dailyDone)+' daily open &middot; '+(sc.keyTotal-sc.keyDone)+' keystone open</p></div></div>'
+        +'<button class="rc-view" data-open="'+role+'">View open</button></div>'
+        +'<div class="barrow"><span class="blab">Daily</span><span class="btrack"><span style="width:'+dPct+'%;background:'+dailyColor+'"></span></span><span class="bval">'+sc.dailyDone+' / '+sc.dailyTotal+'</span></div>'
+        +'<div class="barrow"><span class="blab">Keystone</span><span class="btrack"><span style="width:'+(sc.keyTotal?kPct:0)+'%;background:'+keyColor+'"></span></span><span class="bval">'+keyVal+'</span></div>'
+        +'<div class="openlist" id="open-'+role.replace(/\s/g,"")+'">'+renderOpenList(role)+'</div>'
+        +'</div>';
+    });
+    panel.innerHTML=html;
+  }
+
+  function renderOpenList(role){
+    const sc=splitCounts(role,sel);
+    let html="";
+    if(sc.keyOpen.length){
+      html+='<div class="grp"><p class="olh k">Keystone still open</p>';
+      sc.keyOpen.forEach(it=>{const od=it.overdue?' <span class="od">(overdue &middot; was due '+fmtShort(it.dueDate)+')</span>':'';html+='<div class="oli kk">'+it.label+od+'</div>';});
+      html+='</div>';
+    }
+    if(sc.dailyOpen.length){
+      html+='<div class="grp"><p class="olh d">Daily still open</p>';
+      sc.dailyOpen.forEach(it=>{html+='<div class="oli">'+it.label+'</div>';});
+      html+='</div>';
+    }
+    if(!sc.keyOpen.length && !sc.dailyOpen.length){
+      html='<p class="allclear">All clear &mdash; everything for this day is done.</p>';
+    }
+    return html;
+  }
+
+  function renderModeBar(){
+    const el=document.getElementById('modeRow');
+    if(!roleHasStats(active)){el.style.display='none';el.innerHTML='';return;}
+    el.style.display='';
+    el.innerHTML='<button class="modebtn'+(mode==='checklist'?' on':'')+'" data-mode="checklist">Checklist</button><button class="modebtn'+(mode==='stats'?' on':'')+'" data-mode="stats">Stats</button>';
+  }
+  function statGetVal(key){const el=document.getElementById('st_'+key);if(!el)return 0;const v=parseFloat(el.value);return isNaN(v)?0:v;}
+  function statRecompute(){
+    if(!STATCAT)return;
+    Object.keys(TOTALS).forEach(function(tk){
+      const comp=STATCAT.filter(TOTALS[tk]).map(function(m){return m.key;});
+      const sum=comp.reduce(function(s,k){return s+statGetVal(k);},0);
+      const el=document.getElementById('st_'+tk);
+      if(el){const meta=STATCAT.find(function(m){return m.key===tk;});const isCur=meta&&meta.unit==='currency';el.value=sum?(isCur?sum.toFixed(2):sum):'';}
+    });
+    if(active==='Front Desk'){
+      const ms=fdNonTotal();let n=0;ms.forEach(function(m){const el=document.getElementById('st_'+m.key);if(el&&el.value.trim()!=='')n++;});
+      const gh=document.getElementById('gateHint');
+      if(gh){const ok=n===ms.length&&ms.length>0;gh.className='gatehint'+(ok?' ok':'');gh.textContent=ok?('All '+ms.length+' stats entered — the End-of-day “Complete daily stats” task auto-checks once you save.'):(n+' of '+ms.length+' entered. Fill every line to auto-complete the End-of-day stats task.');}
+    }
+  }
+  function renderStats(){
+    const host=document.getElementById('statsPanel');
+    if(!STATCAT){host.innerHTML='<div class="nothing">Loading stats…</div>';return;}
+    const ms=roleStatMetrics(active);
+    if(!ms.length){host.innerHTML='<div class="nothing">No stats are assigned to this role yet — this tab is reserved so every role has a stats space. It will fill in as the clinic adds metrics for this role.</div>';return;}
+    const ds=ymd(sel);const vals=STATVALS[ds]||{};
+    const order=[];const byG={};
+    ms.forEach(function(m){if(!byG[m.grp]){byG[m.grp]=[];order.push(m.grp);}byG[m.grp].push(m);});
+    let h='<div class="statshead"><div><h3 class="statstitle">'+escH(active)+' — daily stats</h3><p class="statsdate">'+DOW[sel.getDay()]+', '+MON[sel.getMonth()]+' '+sel.getDate()+', '+sel.getFullYear()+(isClosed(sel)?' · office closed':'')+'</p></div><input id="statWho" class="statwho" placeholder="entered by"></div>';
+    if(active==='Front Desk'){const c=fdStatsCount(sel);const ok=c.n===c.total&&c.total>0;h+='<div class="gatehint'+(ok?' ok':'')+'" id="gateHint">'+(ok?('All '+c.total+' stats entered — End-of-day “Complete daily stats” is checked automatically.'):(c.n+' of '+c.total+' entered. The End-of-day “Complete daily stats” box checks itself once all are filled.'))+'</div>';}
+    order.forEach(function(g){
+      h+='<div class="statgrp"><div class="statgrplbl">'+escH(GRP_LABEL[g]||g)+'</div>';
+      byG[g].forEach(function(m){
+        const v=vals[m.id];const num=statFilled(v)?(+v):'';const cur=m.unit==='currency';
+        if(m.is_total){
+          h+='<div class="statrow total"><span class="statlbl">'+escH(m.label)+'</span><span class="statin'+(cur?' cur':'')+'"><input id="st_'+m.key+'" data-key="'+m.key+'" readonly value="'+(num===''?'':num)+'"></span></div>';
+        }else{
+          h+='<div class="statrow"><span class="statlbl">'+escH(m.label)+'</span><span class="statin'+(cur?' cur':'')+'"><input id="st_'+m.key+'" data-key="'+m.key+'" type="number" step="'+(cur?'0.01':'1')+'" inputmode="decimal" value="'+(num===''?'':num)+'" oninput="statRecompute()"></span></div>';
+        }
+      });
+      h+='</div>';
+    });
+    h+='<div class="statsbar">';
+    if(active==='Front Desk')h+='<button class="btn" id="zeroBtn">Fill blanks with 0</button>';
+    h+='<button class="btn save" id="saveStatsBtn">Save stats</button><span class="statstatus" id="statStatus"></span></div>';
+    host.innerHTML=h;
+    statRecompute();
+    document.getElementById('saveStatsBtn').onclick=saveStats;
+    const zb=document.getElementById('zeroBtn');if(zb)zb.onclick=function(){fdNonTotal().forEach(function(m){const el=document.getElementById('st_'+m.key);if(el&&el.value.trim()==='')el.value='0';});statRecompute();};
+  }
+  async function saveStats(){
+    const ds=ymd(sel);statRecompute();
+    const who=(document.getElementById('statWho').value||active);
+    const ms=roleStatMetrics(active);const rows=[];
+    ms.forEach(function(m){const el=document.getElementById('st_'+m.key);if(!el)return;const raw=el.value.trim();if(raw==='')return;const v=parseFloat(raw);if(isNaN(v))return;rows.push({stat_date:ds,metric_id:m.id,value:v,entered_by:who,updated_at:new Date().toISOString()});});
+    const st=document.getElementById('statStatus');
+    if(!rows.length){st.textContent='Nothing to save — enter some numbers.';st.className='statstatus err';return;}
+    st.textContent='Saving…';st.className='statstatus';
+    const btn=document.getElementById('saveStatsBtn');btn.disabled=true;
+    try{
+      var up=await window.supa.from('stat_daily').upsert(rows,{onConflict:'stat_date,metric_id'});if(up.error)throw up.error;await loadStatsFor(ds);
+      st.textContent='Saved '+rows.length+' values for '+fmtShort(sel)+' ✓';st.className='statstatus ok';
+      renderRoles();renderMeta();
+      if(active==='Front Desk'){const c=fdStatsCount(sel);const gh=document.getElementById('gateHint');if(gh){const ok=c.n===c.total&&c.total>0;gh.className='gatehint'+(ok?' ok':'');gh.textContent=ok?('All '+c.total+' stats entered — End-of-day “Complete daily stats” is checked automatically.'):(c.n+' of '+c.total+' entered.');}}
+    }
+    catch(e){st.textContent='Save failed: '+(e.message||e);st.className='statstatus err';}
+    btn.disabled=false;
+  }
+  function renderAll(){
+    applyTheme();renderRoles();renderCal();renderModeBar();
+    if(!roleHasStats(active)) mode='checklist';
+    const statsMode = (mode==='stats' && roleHasStats(active));
+    document.getElementById("metaRow").style.display=statsMode?"none":"";
+    document.querySelector(".actions").style.display=statsMode?"none":"";
+    document.getElementById("histPanel").style.display=statsMode?"none":(histOpen?"block":"none");
+    document.getElementById("sections").style.display=statsMode?"none":"";
+    document.getElementById("statsPanel").style.display=statsMode?"block":"none";
+    document.getElementById("mgrPanel").style.display="none";
+    document.getElementById("foot").style.display=statsMode?"none":"block";
+    if(statsMode){ renderStats(); }
+    else { renderMeta();renderSections();renderHistory(); }
+  }
+
+  viewY=sel.getFullYear();viewM=sel.getMonth();
+  document.getElementById("themeBtn").addEventListener("click",()=>{theme=theme==="dark"?"light":"dark";localStorage.setItem(SKEY+"_theme",theme);renderAll();});
+  document.getElementById("roletabs").addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(!b)return;active=b.dataset.r;localStorage.setItem(SKEY+"_role",active);mode='checklist';refresh();});
+  document.getElementById("modeRow").addEventListener("click",e=>{const b=e.target.closest("[data-mode]");if(!b)return;mode=b.dataset.mode;renderAll();});
+  document.getElementById("prevM").addEventListener("click",()=>{viewM--;if(viewM<0){viewM=11;viewY--;}renderCal();});
+  document.getElementById("nextM").addEventListener("click",()=>{viewM++;if(viewM>11){viewM=0;viewY++;}renderCal();});
+  document.getElementById("todayBtn").addEventListener("click",()=>{sel=new Date();sel.setHours(0,0,0,0);viewY=sel.getFullYear();viewM=sel.getMonth();refresh();});
+  document.getElementById("calGrid").addEventListener("click",e=>{const c=e.target.closest("[data-d]");if(!c)return;sel=parseYmd(c.dataset.d);sel.setHours(0,0,0,0);refresh();});
+  document.getElementById("mgrPanel").addEventListener("click",e=>{const b=e.target.closest("[data-open]");if(!b)return;const role=b.dataset.open;const el=document.getElementById("open-"+role.replace(/\s/g,""));const show=!el.classList.contains("show");el.classList.toggle("show",show);b.textContent=show?"Hide open":"View open";});
+  document.getElementById("sections").addEventListener("click",e=>{const gs=e.target.closest("[data-gotostats]");if(gs){mode='stats';renderAll();return;}const it=e.target.closest("[data-id]");if(!it)return;const id=it.dataset.id;
+    /* find the entry meta to log properly */
+    const b=buildForDate(active,sel);const all=flat(b);const entry=all.find(x=>x.id===id);if(!entry)return;
+    const onDate=ymd(sel);
+    setDone(id,onDate,{due:entry.due,label:entry.label,role:active,freq:entry.freq});
+    renderMeta();renderRoles();renderSections();renderHistory();});
+  document.getElementById("histBtn").addEventListener("click",()=>{histOpen=!histOpen;document.getElementById("histBtn").textContent=histOpen?"Hide history":"History";renderHistory();});
+  document.getElementById("resetBtn").addEventListener("click",()=>{
+    /* reset only items currently shown for this role+date that were marked done today */
+    const b=buildForDate(active,sel);const all=flat(b);const onDate=ymd(sel);
+    all.forEach(it=>{if(store.done[it.id]&&store.done[it.id].on===onDate){
+      if(store.log[onDate]&&store.log[onDate].done)store.log[onDate].done=store.log[onDate].done.filter(x=>x.id!==it.id);
+      delete store.done[it.id];
+    }});
+    save();renderAll();
+  });
+  window.__setRole=function(r){ if(roles.indexOf(r)>=0){active=r;localStorage.setItem(SKEY+"_role",active);} };
+  window.__refresh=function(){ refresh(); };
+  window.__startDashboard=async function(){ try{await loadStore();}catch(e){} await refresh(); };
+})();
+</script>
+</body>
+</html>

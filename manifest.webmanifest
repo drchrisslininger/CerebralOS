@@ -1,0 +1,16 @@
+{
+  "name": "Cerebral Staff Dashboard",
+  "short_name": "Cerebral",
+  "description": "Role checklists and daily stats for Cerebral Chiropractic Center",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F4F0EB",
+  "theme_color": "#8A6A52",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
