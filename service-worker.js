@@ -1,5 +1,5 @@
 /* Cerebral Staff Dashboard - service worker */
-const CACHE = 'ccc-staff-v2';
+const CACHE = 'ccc-staff-v3';
 const ASSETS = [
   './', './index.html', './logo.png', './manifest.webmanifest',
   './icon-192.png', './icon-512.png'
