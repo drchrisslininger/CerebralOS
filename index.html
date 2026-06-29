@@ -183,7 +183,8 @@
   .item.statsgate{cursor:pointer;}
   .item.statsgate .box{border-style:dashed;}
   .autopill{flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:999px;background:var(--panel2);color:var(--muted);border:1px solid var(--line2);align-self:flex-start;margin-top:1px;}
-  /* auth + pin + util + responsive */
+  /* auth + util + responsive */
+  [hidden]{display:none!important;}
   .screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
   .authcard{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px;}
   .authcard img{height:62px;width:auto;max-width:80%;display:block;margin:0 auto 8px;}
@@ -216,7 +217,7 @@
   @media(max-width:380px){ .metric{min-width:100%;} }
 </style>
 </head>
-<body>
+<body class="light">
 <div id="authScreen" class="screen" hidden>
   <div class="authcard">
     <img src="logo.png" alt="Cerebral Chiropractic Center">
