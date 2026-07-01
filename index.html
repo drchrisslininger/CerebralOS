@@ -215,6 +215,9 @@
     .roletab{padding:11px 12px;font-size:13.5px;}
   }
   @media(max-width:380px){ .metric{min-width:100%;} }
+.freqlabel.assigned{color:var(--rose);}
+  .pill.keytask{background:var(--gold);color:var(--gold-ink);}
+  .pill.urgent{background:var(--rose-strong);color:#fff;}
 </style>
 </head>
 <body class="light">
@@ -277,6 +280,11 @@
   const SKEY="ccc_dash_v5";
   const staffRoles=Object.keys(DATA);
   const roles=staffRoles.slice();
+  const ROLE_PERSON={'Front Desk':{name:'Colleen Cunningham',email:'colleen@cerebralchiropractic.com'},'Chiropractic Assistant':{name:'Alyssa Fielder',email:'alyssa@cerebralchiropractic.com'},'Office Manager':{name:'April McLain',email:'april@cerebralchiropractic.com'}};
+  const ROLE_LABEL={'Front Desk':'Colleen Cunningham (Front Desk)','Chiropractic Assistant':'Alyssa Fielder (Chiropractic Assistant)','Office Manager':'April McLain (Office Manager)'};
+  let ASSIGNED=[];
+  async function loadAssigned(){try{var p=ROLE_PERSON[active];if(!p||!window.supa){ASSIGNED=[];return;}var res=await window.supa.from('todos').select('id,title,notes,due_date,priority,status,created_by_name').eq('assignee_email',p.email).is('lead_id',null).neq('status','dismissed').order('created_at',{ascending:false});if(res.error)throw res.error;ASSIGNED=res.data||[];}catch(e){ASSIGNED=[];}}
+  function assignedHtml(){if(!ASSIGNED||!ASSIGNED.length)return '';var h='<div class="freqlabel assigned">Assigned to you <span class="pill">from your team</span></div><div class="section"><div class="card">';ASSIGNED.forEach(function(t){var done=t.status==='done';var chips='';if(t.due_date)chips+=' <span class="pill keytask">Key Task</span>';if(t.priority==='urgent')chips+=' <span class="pill urgent">Urgent</span>';var sub=[];if(t.created_by_name)sub.push('from '+escH(t.created_by_name));if(t.notes)sub.push(escH(t.notes));var origin=sub.length?'<span class="origin">'+sub.join(' &middot; ')+'</span>':'';h+='<div class="item'+(done?' done':'')+'" data-todo="'+t.id+'"><span class="box">&#10003;</span><span class="txt">'+escH(t.title)+chips+origin+'</span></div>';});h+='</div></div>';return h;}
   const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const DOWS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   const MON=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -342,7 +350,7 @@
   async function loadCatalog(){if(STATCAT)return;try{var res=await window.supa.from('stat_metrics').select('id,key,label,grp,unit,is_total,sort_order').order('sort_order');if(res.error)throw res.error;STATCAT=res.data||[];}catch(e){STATCAT=[];}}
   async function loadStatsFor(ds){try{var res=await window.supa.from('stat_daily').select('metric_id,value').eq('stat_date',ds);if(res.error)throw res.error;var m={};(res.data||[]).forEach(function(r){m[r.metric_id]=r.value;});STATVALS[ds]=m;}catch(e){if(!STATVALS[ds])STATVALS[ds]={};}}
   async function ensureStats(){const ds=ymd(sel);if(!STATVALS[ds])await loadStatsFor(ds);}
-  async function refresh(){await loadCatalog();await ensureStats();renderAll();}
+  async function refresh(){await loadCatalog();await ensureStats();await loadAssigned();renderAll();}
 
   /* stable task id independent of which day it shows on (so overdue carries) */
   function taskId(role,freq,dueStr,sec,i){return role+"::"+freq+"::"+dueStr+"::"+sec+"::"+i;}
@@ -460,7 +468,7 @@
   function applyTheme(){document.body.classList.toggle("light",theme==="light");document.getElementById("themeBtn").innerHTML=theme==="light"?moon():sun();}
 
   function renderRoles(){document.getElementById("roletabs").innerHTML=roles.map(r=>{
-    const c=counts(r,sel);const od=c.overdue?'<span class="odc">'+c.overdue+' overdue</span>':'';return '<button class="roletab'+(r===active?' active':'')+'" data-r="'+r+'"><span>'+r+'</span><span class="badges">'+od+'<span class="c">'+c.done+'/'+c.total+'</span></span></button>';}).join("");}
+    const c=counts(r,sel);const od=c.overdue?'<span class="odc">'+c.overdue+' overdue</span>':'';return '<button class="roletab'+(r===active?' active':'')+'" data-r="'+r+'"><span>'+(ROLE_LABEL[r]||r)+'</span><span class="badges">'+od+'<span class="c">'+c.done+'/'+c.total+'</span></span></button>';}).join("");}
 
   function renderCal(){document.getElementById("calMonth").textContent=MON[viewM]+" "+viewY;let html="";["S","M","T","W","T","F","S"].forEach(d=>html+='<div class="caldow">'+d+'</div>');const first=new Date(viewY,viewM,1).getDay();const days=new Date(viewY,viewM+1,0).getDate();for(let i=0;i<first;i++)html+='<div class="calcell empty"></div>';const todayStr=ymd(new Date(new Date().setHours(0,0,0,0)));for(let day=1;day<=days;day++){const d=new Date(viewY,viewM,day);const ds=ymd(d);const weekend=(d.getDay()===0||d.getDay()===6);const isSel=ds===ymd(sel);const isToday=ds===todayStr;const hasMonthly=staffRoles.some(r=>monthlyKeysOnDate(d).some(o=>DATA[r].monthly[o.kd]));const hasWeekly=staffRoles.some(r=>DATA[r].weekly[String(d.getDay())]);let dots="";if(hasMonthly)dots+='<span class="dot m"></span>';if(hasWeekly)dots+='<span class="dot w"></span>';html+='<div class="calcell'+(weekend?' weekend':'')+(isSel?' selected':'')+(isToday?' today':'')+'" data-d="'+ds+'">'+day+'<span class="dots">'+dots+'</span></div>';}document.getElementById("calGrid").innerHTML=html;const sc=isClosed(sel);document.getElementById("selDate").innerHTML="<b>"+DOW[sel.getDay()]+", "+MON[sel.getMonth()]+" "+sel.getDate()+"</b>"+(sc?" &middot; office closed":"");}
 
@@ -503,6 +511,7 @@
     const hasWM=b.overdue.length||b.monthly.length||b.weekly.length;
     if(!hasWM && b.daily.length){html='<div class="nothing">No weekly, monthly, or overdue tasks today &mdash; just the daily list below.</div>'+html;}
     if(isClosed(sel) && !hasWM && !b.daily.length){html='<div class="nothing">Office closed on this date. No tasks scheduled.</div>';}
+    html=assignedHtml()+html;
     document.getElementById("sections").innerHTML=html;
     document.getElementById("foot").textContent="Auto-saves per day on this computer and accumulates over time. Weekly and monthly tasks keep their assigned due date; if not checked off, they carry forward as Overdue (red) until completed \u2014 weekly through end of that week, monthly through end of that month. Completing an overdue item records it on the day you clear it. Open History for the running record.";
   }
@@ -523,7 +532,7 @@
       const parts=done.map(x=>{const late=x.due&&x.due!==ds;return '<div>'+(late?'<span class="ok">\u2713</span> ':'<span class="ok">\u2713</span> ')+x.label+(late?' <span class="miss">(was due '+fmtShort(parseYmd(x.due))+')</span>':'')+'</div>';}).join("");
       rows+='<div class="histrow"><div class="hd">'+fmtShort(d)+'</div><div class="hv">'+parts+'</div></div>';
     });
-    panel.innerHTML='<h4>Completion history &middot; '+active+'</h4>'+(any?rows:'<p class="histempty">No completed tasks recorded yet for this role. Check items off and they\u2019ll log here by the day you completed them.</p>');
+    panel.innerHTML='<h4>Completion history &middot; '+(ROLE_LABEL[active]||active)+'</h4>'+(any?rows:'<p class="histempty">No completed tasks recorded yet for this role. Check items off and they\u2019ll log here by the day you completed them.</p>');
   }
 
   function renderManager(){
@@ -597,7 +606,7 @@
     const ds=ymd(sel);const vals=STATVALS[ds]||{};
     const order=[];const byG={};
     ms.forEach(function(m){if(!byG[m.grp]){byG[m.grp]=[];order.push(m.grp);}byG[m.grp].push(m);});
-    let h='<div class="statshead"><div><h3 class="statstitle">'+escH(active)+' — daily stats</h3><p class="statsdate">'+DOW[sel.getDay()]+', '+MON[sel.getMonth()]+' '+sel.getDate()+', '+sel.getFullYear()+(isClosed(sel)?' · office closed':'')+'</p></div><input id="statWho" class="statwho" placeholder="entered by"></div>';
+    let h='<div class="statshead"><div><h3 class="statstitle">'+escH(ROLE_LABEL[active]||active)+' — daily stats</h3><p class="statsdate">'+DOW[sel.getDay()]+', '+MON[sel.getMonth()]+' '+sel.getDate()+', '+sel.getFullYear()+(isClosed(sel)?' · office closed':'')+'</p></div><input id="statWho" class="statwho" placeholder="entered by"></div>';
     if(active==='Front Desk'){const c=fdStatsCount(sel);const ok=c.n===c.total&&c.total>0;h+='<div class="gatehint'+(ok?' ok':'')+'" id="gateHint">'+(ok?('All '+c.total+' stats entered — End-of-day “Complete daily stats” is checked automatically.'):(c.n+' of '+c.total+' entered. The End-of-day “Complete daily stats” box checks itself once all are filled.'))+'</div>';}
     order.forEach(function(g){
       h+='<div class="statgrp"><div class="statgrplbl">'+escH(GRP_LABEL[g]||g)+'</div>';
@@ -661,7 +670,7 @@
   document.getElementById("todayBtn").addEventListener("click",()=>{sel=new Date();sel.setHours(0,0,0,0);viewY=sel.getFullYear();viewM=sel.getMonth();refresh();});
   document.getElementById("calGrid").addEventListener("click",e=>{const c=e.target.closest("[data-d]");if(!c)return;sel=parseYmd(c.dataset.d);sel.setHours(0,0,0,0);refresh();});
   document.getElementById("mgrPanel").addEventListener("click",e=>{const b=e.target.closest("[data-open]");if(!b)return;const role=b.dataset.open;const el=document.getElementById("open-"+role.replace(/\s/g,""));const show=!el.classList.contains("show");el.classList.toggle("show",show);b.textContent=show?"Hide open":"View open";});
-  document.getElementById("sections").addEventListener("click",e=>{const gs=e.target.closest("[data-gotostats]");if(gs){mode='stats';renderAll();return;}const it=e.target.closest("[data-id]");if(!it)return;const id=it.dataset.id;
+  document.getElementById("sections").addEventListener("click",e=>{const td=e.target.closest("[data-todo]");if(td){var tid=td.dataset.todo;var tt=(ASSIGNED||[]).find(function(x){return x.id===tid;});var ns=(tt&&tt.status==='done')?'open':'done';if(window.supa){window.supa.from('todos').update({status:ns,completed_at:ns==='done'?new Date().toISOString():null}).eq('id',tid).then(function(){loadAssigned().then(function(){renderSections();});});}return;}const gs=e.target.closest("[data-gotostats]");if(gs){mode='stats';renderAll();return;}const it=e.target.closest("[data-id]");if(!it)return;const id=it.dataset.id;
     /* find the entry meta to log properly */
     const b=buildForDate(active,sel);const all=flat(b);const entry=all.find(x=>x.id===id);if(!entry)return;
     const onDate=ymd(sel);
