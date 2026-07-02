@@ -218,6 +218,26 @@
 .freqlabel.assigned{color:var(--rose);}
   .pill.keytask{background:var(--gold);color:var(--gold-ink);}
   .pill.urgent{background:var(--rose-strong);color:#fff;}
+.suppliespanel{padding:4px 0 24px;}
+  .supwrap{max-width:640px;margin:0 auto;}
+  .suphead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:4px 0 8px;}
+  .supseg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .supsegbtn{background:transparent;border:none;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:9px 15px;cursor:pointer;}
+  .supsegbtn.on{background:var(--rose);color:#fff;}
+  .supactions{display:flex;gap:8px;}
+  .supbtn{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 14px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;}
+  .supbtn.danger{color:var(--rose-strong);border-color:var(--rose-line);}
+  .suphint{color:var(--muted);font-size:13px;margin:2px 0 10px;}
+  .supsechead{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-deep);margin:18px 0 2px;display:flex;justify-content:space-between;align-items:center;}
+  .supseccount{font-size:11px;font-weight:700;color:var(--rose-strong);text-transform:none;letter-spacing:0;}
+  .supitem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:16px;color:var(--text);user-select:none;-webkit-tap-highlight-color:transparent;}
+  .supitem.on .suptxt{font-weight:700;color:var(--rose-strong);}
+  .suptoggle{width:52px;height:30px;border-radius:16px;background:var(--line2);position:relative;flex-shrink:0;transition:background .15s;}
+  .supitem.on .suptoggle{background:var(--rose);}
+  .supknob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:left .15s;}
+  .supitem.on .supknob{left:25px;}
+  .supempty{padding:26px 18px;text-align:center;color:var(--muted);line-height:1.5;}
+  .supbadge{display:inline-block;min-width:18px;padding:0 5px;height:18px;line-height:18px;border-radius:9px;background:var(--rose);color:#fff;font-size:11px;font-weight:700;text-align:center;margin-left:5px;}
 </style>
 </head>
 <body class="light">
@@ -271,6 +291,7 @@
   <div class="histpanel" id="histPanel"></div>
   <div id="sections"></div>
   <div id="statsPanel" class="statspanel" style="display:none"></div>
+  <div id="suppliesPanel" class="suppliespanel" style="display:none"></div>
   <div class="mgrwrap" id="mgrPanel" style="display:none"></div>
   <p class="foot" id="foot"></p>
 </div>
@@ -350,7 +371,7 @@
   async function loadCatalog(){if(STATCAT)return;try{var res=await window.supa.from('stat_metrics').select('id,key,label,grp,unit,is_total,sort_order').order('sort_order');if(res.error)throw res.error;STATCAT=res.data||[];}catch(e){STATCAT=[];}}
   async function loadStatsFor(ds){try{var res=await window.supa.from('stat_daily').select('metric_id,value').eq('stat_date',ds);if(res.error)throw res.error;var m={};(res.data||[]).forEach(function(r){m[r.metric_id]=r.value;});STATVALS[ds]=m;}catch(e){if(!STATVALS[ds])STATVALS[ds]={};}}
   async function ensureStats(){const ds=ymd(sel);if(!STATVALS[ds])await loadStatsFor(ds);}
-  async function refresh(){await loadCatalog();await ensureStats();await loadAssigned();renderAll();}
+  async function refresh(){await loadCatalog();await ensureStats();await loadAssigned();await loadSupplies();renderAll();}
 
   /* stable task id independent of which day it shows on (so overdue carries) */
   function taskId(role,freq,dueStr,sec,i){return role+"::"+freq+"::"+dueStr+"::"+sec+"::"+i;}
@@ -577,11 +598,40 @@
     return html;
   }
 
+var SUPPLIES=[
+['Office Supplies',['Brochures','Folders','Business Cards','Printer Paper','Card Stock','Receipt Paper','Scotch Tape','Packing Tape','Staples','Paper Clips','Wite Out','DVDs','Pencils','Pens','Post-it Notes / Sticky Notes','Highlighters','Envelopes','Kleenex']],
+['Kitchen Supplies',['Coffee','Tea','Coffee Cups','Water','Paper Towels']],
+['Restroom Supplies',['Toilet Paper','Hand Soap','Hand Sanitizer','Hand Towels','Febreeze / Deodorizer','Trash Bags – Small','Trash Bags – Large']],
+['Cleaning Supplies',['Multi-Surface Wipes','All Purpose Cleaner','Toilet Cleaner','Glass Cleaner','Lysol Air Sanitizer','Floor Cleaner','Swiffer Pads']],
+['Clinical Supplies',['Head Rest Paper','Alcohol Wipes','Ice Packs','Neck Collar','Cervipedic Pillow']]
+];
+var SUP={flagged:{}};var supMode='all';var _supPoll=null;
+function supCount(){return Object.keys(SUP.flagged||{}).length;}
+async function loadSupplies(){try{if(!window.supa)return;var res=await window.supa.from('app_state').select('data').eq('key','supplies_store').maybeSingle();if(res.error)throw res.error;var d=res.data&&res.data.data;if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){d=null;}}SUP.flagged=(d&&d.flagged)||{};}catch(e){}}
+function saveSupplies(){try{if(!window.supa)return;window.supa.from('app_state').upsert({key:'supplies_store',data:{flagged:SUP.flagged},updated_at:new Date().toISOString()}).then(function(){},function(){});}catch(e){}}
+function startSupPoll(){if(_supPoll)return;_supPoll=setInterval(function(){loadSupplies().then(function(){if(mode==='supplies'){renderSupplies();renderModeBar();}});},7000);}
+function stopSupPoll(){if(_supPoll){clearInterval(_supPoll);_supPoll=null;}}
+function copyOrderList(){var lines=[];SUPPLIES.forEach(function(sec){var its=sec[1].filter(function(it){return SUP.flagged[sec[0]+'::'+it];});if(its.length){lines.push(sec[0].toUpperCase());its.forEach(function(it){lines.push('  - '+it);});lines.push('');}});var txt=lines.join('\n').trim();if(!txt){alert('Nothing is flagged to order yet.');return;}try{navigator.clipboard.writeText(txt);alert('Order list copied to clipboard.');}catch(e){alert(txt);}}
+function renderSupplies(){var el=document.getElementById('suppliesPanel');if(!el)return;var n=supCount();
+  var head='<div class="suphead"><div class="supseg"><button class="supsegbtn'+(supMode==='all'?' on':'')+'" data-supmode="all">All items</button><button class="supsegbtn'+(supMode==='order'?' on':'')+'" data-supmode="order">To order'+(n?' ('+n+')':'')+'</button></div><div class="supactions"><button class="supbtn" data-supcopy="1">Copy</button><button class="supbtn danger" data-supclear="1">Clear</button></div></div>';
+  var body='';
+  if(supMode==='order'){
+    if(!n){body='<div class="supempty">Nothing flagged yet. Tap items under <b>All items</b> as you find what\'s running low, then come back here for the order list.</div>';}
+    else{SUPPLIES.forEach(function(sec){var its=sec[1].filter(function(it){return SUP.flagged[sec[0]+'::'+it];});if(!its.length)return;body+='<div class="supsechead">'+sec[0]+'</div>';its.forEach(function(it){var id=sec[0]+'::'+it;body+='<div class="supitem on" data-sup="'+id+'"><span class="suptxt">'+it+'</span><span class="suptoggle"><span class="supknob"></span></span></div>';});});}
+  } else {
+    body='<div class="suphint">Walk the clinic and flip on anything that\'s low. It saves for everyone instantly.</div>';
+    SUPPLIES.forEach(function(sec){var oncount=sec[1].filter(function(it){return SUP.flagged[sec[0]+'::'+it];}).length;body+='<div class="supsechead">'+sec[0]+(oncount?' <span class="supseccount">'+oncount+' flagged</span>':'')+'</div>';sec[1].forEach(function(it){var id=sec[0]+'::'+it;var on=!!SUP.flagged[id];body+='<div class="supitem'+(on?' on':'')+'" data-sup="'+id+'"><span class="suptxt">'+it+'</span><span class="suptoggle"><span class="supknob"></span></span></div>';});});
+  }
+  el.innerHTML='<div class="supwrap">'+head+body+'</div>';
+}
   function renderModeBar(){
     const el=document.getElementById('modeRow');
-    if(!roleHasStats(active)){el.style.display='none';el.innerHTML='';return;}
     el.style.display='';
-    el.innerHTML='<button class="modebtn'+(mode==='checklist'?' on':'')+'" data-mode="checklist">Checklist</button><button class="modebtn'+(mode==='stats'?' on':'')+'" data-mode="stats">Stats</button>';
+    var h='<button class="modebtn'+(mode==='checklist'?' on':'')+'" data-mode="checklist">Checklist</button>';
+    if(roleHasStats(active))h+='<button class="modebtn'+(mode==='stats'?' on':'')+'" data-mode="stats">Stats</button>';
+    var n=supCount();
+    h+='<button class="modebtn'+(mode==='supplies'?' on':'')+'" data-mode="supplies">Supplies'+(n?' <span class="supbadge">'+n+'</span>':'')+'</button>';
+    el.innerHTML=h;
   }
   function statGetVal(key){const el=document.getElementById('st_'+key);if(!el)return 0;const v=parseFloat(el.value);return isNaN(v)?0:v;}
   function statRecompute(){
@@ -648,17 +698,21 @@
   }
   function renderAll(){
     applyTheme();renderRoles();renderCal();renderModeBar();
-    if(!roleHasStats(active)) mode='checklist';
+    if(mode==='stats' && !roleHasStats(active)) mode='checklist';
     const statsMode = (mode==='stats' && roleHasStats(active));
-    document.getElementById("metaRow").style.display=statsMode?"none":"";
-    document.querySelector(".actions").style.display=statsMode?"none":"";
-    document.getElementById("histPanel").style.display=statsMode?"none":(histOpen?"block":"none");
-    document.getElementById("sections").style.display=statsMode?"none":"";
+    const suppliesMode = (mode==='supplies');
+    const hideList = statsMode || suppliesMode;
+    document.getElementById("metaRow").style.display=hideList?"none":"";
+    document.querySelector(".actions").style.display=hideList?"none":"";
+    document.getElementById("histPanel").style.display=hideList?"none":(histOpen?"block":"none");
+    document.getElementById("sections").style.display=hideList?"none":"";
     document.getElementById("statsPanel").style.display=statsMode?"block":"none";
+    document.getElementById("suppliesPanel").style.display=suppliesMode?"block":"none";
     document.getElementById("mgrPanel").style.display="none";
-    document.getElementById("foot").style.display=statsMode?"none":"block";
+    document.getElementById("foot").style.display=hideList?"none":"block";
+    if(suppliesMode){ renderSupplies(); startSupPoll(); } else { stopSupPoll(); }
     if(statsMode){ renderStats(); }
-    else { renderMeta();renderSections();renderHistory(); }
+    else if(!suppliesMode){ renderMeta();renderSections();renderHistory(); }
   }
 
   viewY=sel.getFullYear();viewM=sel.getMonth();
@@ -685,6 +739,12 @@
       delete store.done[it.id];
     }});
     save();renderAll();
+  });
+  document.getElementById("suppliesPanel").addEventListener("click",function(e){
+    var m=e.target.closest("[data-supmode]");if(m){supMode=m.dataset.supmode;renderSupplies();return;}
+    if(e.target.closest("[data-supclear]")){if(confirm("Clear the whole order list? This unchecks every flagged item for everyone.")){SUP.flagged={};saveSupplies();renderSupplies();renderModeBar();}return;}
+    if(e.target.closest("[data-supcopy]")){copyOrderList();return;}
+    var it=e.target.closest("[data-sup]");if(it){var id=it.dataset.sup;if(SUP.flagged[id])delete SUP.flagged[id];else SUP.flagged[id]=true;saveSupplies();renderSupplies();renderModeBar();return;}
   });
   window.__setRole=function(r){ if(roles.indexOf(r)>=0){active=r;localStorage.setItem(SKEY+"_role",active);} };
   window.__refresh=function(){ refresh(); };
