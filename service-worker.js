@@ -1,5 +1,5 @@
 /* Cerebral Staff Dashboard - offline app shell */
-const CACHE = 'ccc-staff-v4';
+const CACHE = 'ccc-staff-v5';
 const ASSETS = [
   './', './index.html', './logo.png', './manifest.webmanifest',
   './icon-192.png', './icon-512.png'
